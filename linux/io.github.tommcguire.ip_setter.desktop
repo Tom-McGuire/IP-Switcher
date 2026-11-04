@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=IP Profile Switcher
+Comment=NIC Quick-Config & Static/DHCP Profile Switcher
+Exec=ip_setter
+Icon=io.github.tommcguire.ip_setter
+Terminal=false
+Categories=Network;System;Utility;
+StartupWMClass=io.github.tommcguire.ip_setter
