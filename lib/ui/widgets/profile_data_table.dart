@@ -24,11 +24,13 @@ class TableColumnSpec {
 class ProfileDataTable extends StatefulWidget {
   final void Function(IpProfileModel profile) onEditProfile;
   final VoidCallback onNewProfile;
+  final VoidCallback onSnapshotActiveNic;
 
   const ProfileDataTable({
     super.key,
     required this.onEditProfile,
     required this.onNewProfile,
+    required this.onSnapshotActiveNic,
   });
 
   @override
@@ -95,7 +97,7 @@ class _ProfileDataTableState extends State<ProfileDataTable> {
     for (final spec in _columnSpecs) spec.id: spec.defaultWidth,
   };
 
-  static const double _actionsColWidth = 148;
+  static const double _actionsColWidth = 172;
 
   @override
   void dispose() {
@@ -104,87 +106,148 @@ class _ProfileDataTableState extends State<ProfileDataTable> {
     super.dispose();
   }
 
+  Future<void> _confirmDeleteProfile(
+    BuildContext context,
+    IpSetterViewModel vm,
+    IpProfileModel profile,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text(
+          'Delete Preset?',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'Are you sure you want to delete "${profile.name}" (${profile.formattedIpWithCidr})?',
+          style: const TextStyle(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await vm.deleteProfile(profile.id);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<IpSetterViewModel>();
     final profiles = vm.filteredProfiles;
+    final applyBlockedByPlaceholder =
+        (vm.selectedInterface?.isPlaceholder ?? false) && !vm.dryRunMode;
 
-    if (profiles.isEmpty) {
-      return _buildEmptyState(context, vm);
-    }
+    return Container(
+      decoration: BoxDecoration(
+        border: vm.dryRunMode
+            ? Border.all(
+                color: AppTheme.warning.withValues(alpha: 0.75),
+                width: 1.5,
+              )
+            : null,
+      ),
+      child: profiles.isEmpty
+          ? _buildEmptyState(context, vm)
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                final fixedTotal =
+                    _columnWidths.values.fold(0.0, (a, b) => a + b) +
+                        _actionsColWidth;
+                final summaryWidth =
+                    (constraints.maxWidth - fixedTotal).clamp(180.0, 2000.0);
+                final totalTableWidth = fixedTotal + summaryWidth;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final fixedTotal = _columnWidths.values.fold(0.0, (a, b) => a + b) +
-            _actionsColWidth;
-        final summaryWidth =
-            (constraints.maxWidth - fixedTotal).clamp(180.0, 2000.0);
-        final totalTableWidth = fixedTotal + summaryWidth;
-
-        return Scrollbar(
-          controller: _horizontalScrollController,
-          thumbVisibility: true,
-          child: SingleChildScrollView(
-            controller: _horizontalScrollController,
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: totalTableWidth,
-              height: constraints.maxHeight,
-              child: Column(
-                children: [
-                  _buildHeaderRow(vm, summaryWidth),
-                  Expanded(
-                    child: Scrollbar(
-                      controller: _verticalScrollController,
-                      thumbVisibility: true,
-                      child: ListView.separated(
-                        controller: _verticalScrollController,
-                        itemCount: profiles.length,
-                        separatorBuilder: (_, _) => const Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: AppTheme.border,
-                        ),
-                        itemBuilder: (context, index) {
-                          final profile = profiles[index];
-                          final isSelected =
-                              vm.selectedProfile?.id == profile.id;
-                          final isActive =
-                              vm.isProfileActiveOnSelectedNic(profile);
-                          return _ProfileRowWidget(
-                            profile: profile,
-                            isSelected: isSelected,
-                            isActive: isActive,
-                            columnWidths: _columnWidths,
-                            summaryWidth: summaryWidth,
-                            actionsWidth: _actionsColWidth,
-                            isApplying: vm.isApplying,
-                            onSelect: () => vm.selectProfile(profile),
-                            onApply: () => vm.applyProfile(profile),
-                            onToggleFavorite: () => vm.toggleFavorite(profile),
-                            onEdit: () => widget.onEditProfile(profile),
-                            onDuplicate: () => vm.duplicateProfile(profile),
-                            onDelete: () => vm.deleteProfile(profile.id),
-                          );
-                        },
+                return Scrollbar(
+                  controller: _horizontalScrollController,
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    controller: _horizontalScrollController,
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: totalTableWidth,
+                      height: constraints.maxHeight,
+                      child: Column(
+                        children: [
+                          _buildHeaderRow(vm, summaryWidth),
+                          Expanded(
+                            child: Scrollbar(
+                              controller: _verticalScrollController,
+                              thumbVisibility: true,
+                              child: ListView.separated(
+                                controller: _verticalScrollController,
+                                itemCount: profiles.length,
+                                separatorBuilder: (_, _) => const Divider(
+                                  height: 1,
+                                  thickness: 1,
+                                  color: AppTheme.border,
+                                ),
+                                itemBuilder: (context, index) {
+                                  final profile = profiles[index];
+                                  final isSelected =
+                                      vm.selectedProfile?.id == profile.id;
+                                  final isActive = vm
+                                      .isProfileActiveOnSelectedNic(profile);
+                                  return _ProfileRowWidget(
+                                    profile: profile,
+                                    categoryColor:
+                                        vm.getCategoryColor(profile.category),
+                                    isSelected: isSelected,
+                                    isActive: isActive,
+                                    columnWidths: _columnWidths,
+                                    summaryWidth: summaryWidth,
+                                    actionsWidth: _actionsColWidth,
+                                    isApplying: vm.isApplying ||
+                                        applyBlockedByPlaceholder,
+                                    onSelect: () => vm.selectProfile(profile),
+                                    onApply: () => vm.applyProfile(profile),
+                                    onToggleFavorite: () =>
+                                        vm.toggleFavorite(profile),
+                                    onEdit: () =>
+                                        widget.onEditProfile(profile),
+                                    onDuplicate: () =>
+                                        vm.duplicateProfile(profile),
+                                    onDelete: () => _confirmDeleteProfile(
+                                      context,
+                                      vm,
+                                      profile,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ],
-              ),
+                );
+              },
             ),
-          ),
-        );
-      },
     );
   }
 
   Widget _buildHeaderRow(IpSetterViewModel vm, double summaryWidth) {
     return Container(
       height: 32,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppTheme.surfaceHighest,
-        border: Border(bottom: BorderSide(color: AppTheme.border)),
+        border: Border(
+          bottom: BorderSide(
+            color: vm.dryRunMode
+                ? AppTheme.warning.withValues(alpha: 0.65)
+                : AppTheme.border,
+          ),
+        ),
       ),
       child: Row(
         children: [
@@ -212,14 +275,44 @@ class _ProfileDataTableState extends State<ProfileDataTable> {
             decoration: const BoxDecoration(
               border: Border(right: BorderSide(color: AppTheme.border)),
             ),
-            child: const Text(
-              'EQUIPMENT / SUBNET NOTES',
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textSecondary,
-                letterSpacing: 0.5,
-              ),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'EQUIPMENT / SUBNET NOTES',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textSecondary,
+                      letterSpacing: 0.5,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (vm.dryRunMode)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 1.5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.warning.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: AppTheme.warning.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: const Text(
+                      'DRY-RUN TABLE BORDER',
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.warning,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
           // Actions Column
@@ -309,65 +402,62 @@ class _ProfileDataTableState extends State<ProfileDataTable> {
   }
 
   Widget _buildEmptyState(BuildContext context, IpSetterViewModel vm) {
+    final hasActiveFilter = vm.hasActiveFilters;
+
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            vm.hasActiveFilters
+            hasActiveFilter
                 ? Icons.filter_alt_off_outlined
-                : Icons.radar,
-            size: 56,
-            color: AppTheme.primaryAccent.withValues(alpha: 0.7),
+                : Icons.lan_outlined,
+            size: 54,
+            color: Colors.grey.withValues(alpha: 0.5),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Text(
-            vm.hasActiveFilters
-                ? 'No Presets Match Active Filter'
-                : 'No IP Profiles Configured',
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimary,
-            ),
+            hasActiveFilter
+                ? 'No presets match your active search filters'
+                : 'No IP Profile Presets Loaded',
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
-            vm.hasActiveFilters
-                ? 'Clear your search query or category filter to view all saved adapter presets.'
-                : 'Create a custom static IPv4 preset or restore the built-in field & lab presets.',
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppTheme.textSecondary,
+            hasActiveFilter
+                ? 'Try clearing your search query or category filter chips'
+                : 'Create a custom preset above, snapshot your active network interface, or load the demo presets.',
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 20),
+          if (hasActiveFilter)
+            FilledButton.tonalIcon(
+              icon: const Icon(Icons.filter_alt_off, size: 16),
+              label: const Text('Reset All Filters'),
+              onPressed: vm.clearAllFilters,
+            )
+          else
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              children: [
+                FilledButton.icon(
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('New Preset'),
+                  onPressed: widget.onNewProfile,
+                ),
+                FilledButton.tonalIcon(
+                  icon: const Icon(Icons.camera_alt_outlined, size: 16),
+                  label: const Text('Snapshot Active NIC'),
+                  onPressed: widget.onSnapshotActiveNic,
+                ),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.auto_awesome, size: 16),
+                  label: const Text('Load Demo Presets'),
+                  onPressed: () => vm.loadDemoPresets(),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 18),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              FilledButton.icon(
-                onPressed: vm.hasActiveFilters
-                    ? vm.clearAllFilters
-                    : widget.onNewProfile,
-                icon: Icon(
-                  vm.hasActiveFilters ? Icons.clear_all : Icons.add,
-                  size: 16,
-                ),
-                label: Text(
-                  vm.hasActiveFilters ? 'Clear All Filters' : 'Create New Preset',
-                ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.primaryAccent,
-                ),
-              ),
-              const SizedBox(width: 12),
-              OutlinedButton.icon(
-                onPressed: vm.resetToDefaultPresets,
-                icon: const Icon(Icons.restore, size: 16),
-                label: const Text('Load Built-in Demo Presets'),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -376,6 +466,7 @@ class _ProfileDataTableState extends State<ProfileDataTable> {
 
 class _ProfileRowWidget extends StatefulWidget {
   final IpProfileModel profile;
+  final Color categoryColor;
   final bool isSelected;
   final bool isActive;
   final Map<String, double> columnWidths;
@@ -391,6 +482,7 @@ class _ProfileRowWidget extends StatefulWidget {
 
   const _ProfileRowWidget({
     required this.profile,
+    required this.categoryColor,
     required this.isSelected,
     required this.isActive,
     required this.columnWidths,
@@ -412,24 +504,10 @@ class _ProfileRowWidget extends StatefulWidget {
 class _ProfileRowWidgetState extends State<_ProfileRowWidget> {
   bool _isHovered = false;
 
-  Color _categoryColor(String category) {
-    switch (category.toUpperCase()) {
-      case 'LAB':
-        return AppTheme.secondaryCyan;
-      case 'FIELD':
-        return AppTheme.warning;
-      case 'OFFICE':
-        return AppTheme.success;
-      case 'VLAN':
-        return const Color(0xFFA855F7);
-      default:
-        return AppTheme.textSecondary;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final p = widget.profile;
+    final catColor = widget.categoryColor;
     final rowBg = widget.isSelected
         ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
         : (_isHovered ? AppTheme.surfaceHigh : Colors.transparent);
@@ -501,12 +579,10 @@ class _ProfileRowWidgetState extends State<_ProfileRowWidget> {
                           vertical: 1.5,
                         ),
                         decoration: BoxDecoration(
-                          color: _categoryColor(p.category)
-                              .withValues(alpha: 0.15),
+                          color: catColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
-                            color: _categoryColor(p.category)
-                                .withValues(alpha: 0.4),
+                            color: catColor.withValues(alpha: 0.4),
                           ),
                         ),
                         child: Text(
@@ -514,7 +590,7 @@ class _ProfileRowWidgetState extends State<_ProfileRowWidget> {
                           style: TextStyle(
                             fontSize: 9.5,
                             fontWeight: FontWeight.bold,
-                            color: _categoryColor(p.category),
+                            color: catColor,
                           ),
                         ),
                       ),

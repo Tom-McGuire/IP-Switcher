@@ -61,6 +61,12 @@ jobs:
       - name: Install Flutter dependencies
         run: flutter pub get
 
+      # Step 4b: Run static analysis and unit tests before building release binaries
+      - name: Analyze & Test
+        run: |
+          flutter analyze
+          flutter test
+
       # Step 5a: Build & Package Windows (x64 Zip)
       - name: Build Windows
         if: matrix.target == 'windows'

@@ -18,20 +18,21 @@ class NicRepository {
   Future<List<NetworkInterfaceModel>> fetchInterfaces() async {
     final list = await _backendService.discoverInterfaces();
     if (list.isNotEmpty) return list;
-    // Provide a fallback adapter entry if running in an environment with no physical NICs
+    // Provide a clearly marked placeholder adapter entry if running in an environment with no physical NICs
     return const [
       NetworkInterfaceModel(
         id: 'eth0',
-        displayName: 'eth0 (Wired Ethernet)',
+        displayName: 'eth0 (Placeholder — No NIC Detected)',
         connectionName: 'Wired connection 1',
-        macAddress: '00:E0:4C:68:01:A2',
-        isUp: true,
+        macAddress: '00:00:00:00:00:00',
+        isUp: false,
         isDhcpEnabled: true,
         currentIp: '192.168.1.120',
         currentSubnet: '255.255.255.0',
         currentCidr: 24,
         currentGateway: '192.168.1.1',
         currentDns: ['1.1.1.1', '8.8.8.8'],
+        isPlaceholder: true,
       ),
     ];
   }
@@ -41,11 +42,15 @@ class NicRepository {
     required NetworkInterfaceModel nic,
     required IpProfileModel profile,
   }) {
-    return _backendService.generateCommandsForPlatform(
-      platform: platform,
-      nic: nic,
-      profile: profile,
-    );
+    try {
+      return _backendService.generateCommandsForPlatform(
+        platform: platform,
+        nic: nic,
+        profile: profile,
+      );
+    } catch (e) {
+      return ['# Invalid profile configuration: $e'];
+    }
   }
 
   Future<CommandRunResult> applyProfileToNic({
@@ -53,17 +58,26 @@ class NicRepository {
     required IpProfileModel profile,
     required bool isElevated,
     required bool dryRun,
-  }) {
-    final cmds = _backendService.generateCommandsForPlatform(
-      platform: TargetOsPlatform.current,
-      nic: nic,
-      profile: profile,
-    );
-    return _backendService.executeCommands(
-      commands: cmds,
-      isAlreadyElevated: isElevated,
-      dryRun: dryRun,
-    );
+  }) async {
+    try {
+      final cmds = _backendService.generateCommandsForPlatform(
+        platform: TargetOsPlatform.current,
+        nic: nic,
+        profile: profile,
+      );
+      return await _backendService.executeCommands(
+        commands: cmds,
+        isAlreadyElevated: isElevated,
+        dryRun: dryRun,
+      );
+    } catch (e) {
+      return CommandRunResult(
+        exitCode: 1,
+        stdout: '',
+        stderr: e.toString(),
+        executedCommands: const [],
+      );
+    }
   }
 
   /// Creates an in-memory updated [NetworkInterfaceModel] reflecting the target [profile]
@@ -103,26 +117,33 @@ class NicRepository {
 
   /// Converts a live [NetworkInterfaceModel]'s current configuration into a snapshot [IpProfileModel]
   /// so the user can Undo a switch or populate a new preset from the active NIC.
+  /// When [nic.isDhcpEnabled] is true, DNS servers are left null so re-applying restores pure DHCP DNS.
   IpProfileModel createSnapshotProfileFromNic(
     NetworkInterfaceModel nic, {
     String name = 'Previous NIC Snapshot',
   }) {
+    final isDhcp = nic.isDhcpEnabled;
     return IpProfileModel(
-      id: 'snapshot-${DateTime.now().millisecondsSinceEpoch}',
+      id: 'snapshot-${DateTime.now().microsecondsSinceEpoch}',
       name: name,
       category: 'CUSTOM',
-      isDhcp: nic.isDhcpEnabled,
-      ipAddress: nic.currentIp,
-      subnetMask: nic.currentSubnet ??
-          (nic.currentCidr != null
-              ? Ipv4Utils.cidrToMask(nic.currentCidr!)
-              : '255.255.255.0'),
-      cidrPrefix:
-          nic.currentCidr ?? Ipv4Utils.maskToCidr(nic.currentSubnet) ?? 24,
-      defaultGateway: nic.currentGateway,
-      primaryDns: nic.currentDns.isNotEmpty ? nic.currentDns.first : null,
-      secondaryDns: nic.currentDns.length > 1 ? nic.currentDns[1] : null,
-      secondaryIps: nic.secondaryIps,
+      isDhcp: isDhcp,
+      ipAddress: isDhcp ? null : nic.currentIp,
+      subnetMask: isDhcp
+          ? null
+          : (nic.currentSubnet ??
+              (nic.currentCidr != null
+                  ? Ipv4Utils.cidrToMask(nic.currentCidr!)
+                  : '255.255.255.0')),
+      cidrPrefix: isDhcp
+          ? null
+          : (nic.currentCidr ?? Ipv4Utils.maskToCidr(nic.currentSubnet) ?? 24),
+      defaultGateway: isDhcp ? null : nic.currentGateway,
+      primaryDns:
+          (!isDhcp && nic.currentDns.isNotEmpty) ? nic.currentDns.first : null,
+      secondaryDns:
+          (!isDhcp && nic.currentDns.length > 1) ? nic.currentDns[1] : null,
+      secondaryIps: isDhcp ? const [] : nic.secondaryIps,
       preferredInterface: nic.id,
       mtu: nic.mtu,
       notes: 'Captured from ${nic.displayName} (${nic.macAddress})',

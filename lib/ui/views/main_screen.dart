@@ -108,6 +108,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                     onEditProfile: (profile) =>
                         _openProfileEditor(context, initialProfile: profile),
                     onNewProfile: () => _openProfileEditor(context),
+                    onSnapshotActiveNic: () => _openSnapshotDialog(context),
                   ),
           ),
 

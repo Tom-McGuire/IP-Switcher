@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../domain/models/ip_profile_model.dart';
 import '../../domain/models/ipv4_utils.dart';
+import '../../domain/models/profile_category_model.dart';
 import '../../theme/app_theme.dart';
+import '../view_models/ip_setter_view_model.dart';
+import 'category_dialogs.dart';
 
 class ProfileEditorDialog extends StatefulWidget {
   final IpProfileModel? initialProfile;
@@ -37,21 +41,12 @@ class _ProfileEditorDialogState extends State<ProfileEditorDialog> {
 
   bool _syncingMaskCidr = false;
 
-  static const List<String> _categories = [
-    'LAB',
-    'FIELD',
-    'OFFICE',
-    'VLAN',
-    'CUSTOM',
-  ];
-
   @override
   void initState() {
     super.initState();
     final p = widget.initialProfile;
     _nameCtrl = TextEditingController(text: p?.name ?? '');
     _category = p?.category.toUpperCase() ?? 'LAB';
-    if (!_categories.contains(_category)) _category = 'CUSTOM';
     _isDhcp = p?.isDhcp ?? false;
     _isFavorite = p?.isFavorite ?? false;
 
@@ -149,7 +144,7 @@ class _ProfileEditorDialogState extends State<ProfileEditorDialog> {
 
     final result = IpProfileModel(
       id: widget.initialProfile?.id ??
-          'preset-${DateTime.now().millisecondsSinceEpoch}',
+          'profile-${DateTime.now().microsecondsSinceEpoch}',
       name: _nameCtrl.text.trim(),
       category: _category,
       isDhcp: _isDhcp,
@@ -173,6 +168,16 @@ class _ProfileEditorDialogState extends State<ProfileEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final vm = context.watch<IpSetterViewModel>();
+    final categoryModels = vm.categories.isNotEmpty
+        ? vm.categories
+        : ProfileCategoryModel.defaultCategories;
+    final categoryNames =
+        categoryModels.map((c) => c.name.toUpperCase()).toList();
+    if (!categoryNames.contains(_category)) {
+      categoryNames.add(_category);
+    }
+
     final currentCidr = int.tryParse(_cidrCtrl.text.trim());
     final subnetPreview = _isDhcp
         ? 'DHCP Mode: IP, Subnet Mask & Default Gateway will be requested automatically.'
@@ -245,6 +250,7 @@ class _ProfileEditorDialogState extends State<ProfileEditorDialog> {
                     Expanded(
                       flex: 2,
                       child: DropdownButtonFormField<String>(
+                        key: ValueKey(_category),
                         initialValue: _category,
                         dropdownColor: AppTheme.surfaceHigh,
                         style: const TextStyle(
@@ -254,17 +260,58 @@ class _ProfileEditorDialogState extends State<ProfileEditorDialog> {
                         decoration: const InputDecoration(
                           labelText: 'Category Tag',
                         ),
-                        items: _categories
+                        items: categoryNames
                             .map(
                               (c) => DropdownMenuItem(
                                 value: c,
-                                child: Text(c),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 5,
+                                      backgroundColor: vm.getCategoryColor(c),
+                                    ),
+                                    const SizedBox(width: 7),
+                                    Text(c),
+                                  ],
+                                ),
                               ),
                             )
                             .toList(),
                         onChanged: (v) {
                           if (v != null) setState(() => _category = v);
                         },
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Tooltip(
+                      message: 'Create a new category with a custom color',
+                      child: InkWell(
+                        onTap: () async {
+                          final created =
+                              await showDialog<ProfileCategoryModel>(
+                            context: context,
+                            builder: (_) => const AddEditCategoryDialog(),
+                          );
+                          if (created != null && mounted) {
+                            setState(() => _category = created.name);
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          height: 36,
+                          width: 36,
+                          decoration: BoxDecoration(
+                            color: AppTheme.inputFill,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AppTheme.inputBorder),
+                          ),
+                          child: const Icon(
+                            Icons.add,
+                            size: 16,
+                            color: AppTheme.secondaryCyan,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -452,6 +499,26 @@ class _ProfileEditorDialogState extends State<ProfileEditorDialog> {
                             labelText: 'Secondary Alias IPs (Optional)',
                             hintText: 'e.g. 192.168.10.50/24',
                           ),
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) return null;
+                            final items = v
+                                .split(',')
+                                .map((s) => s.trim())
+                                .where((s) => s.isNotEmpty);
+                            for (final alias in items) {
+                              final parts = alias.split('/');
+                              if (!Ipv4Utils.isValidIpv4(parts.first)) {
+                                return 'Invalid alias IPv4: $alias';
+                              }
+                              if (parts.length > 1) {
+                                final pfx = int.tryParse(parts[1]);
+                                if (pfx == null || pfx < 1 || pfx > 32) {
+                                  return 'Invalid alias CIDR: $alias';
+                                }
+                              }
+                            }
+                            return null;
+                          },
                         ),
                       ),
                     ],
@@ -500,13 +567,24 @@ class _ProfileEditorDialogState extends State<ProfileEditorDialog> {
                     ),
                     const SizedBox(width: 10),
                     SizedBox(
-                      width: 90,
-                      child: TextFormField(
-                        controller: _vlanCtrl,
-                        style: AppTheme.monoStyle(fontSize: 12),
-                        decoration: const InputDecoration(
-                          labelText: 'VLAN ID',
-                          hintText: '20',
+                      width: 110,
+                      child: Tooltip(
+                        message: 'Informational VLAN reference tag (1–4094)',
+                        child: TextFormField(
+                          controller: _vlanCtrl,
+                          style: AppTheme.monoStyle(fontSize: 12),
+                          decoration: const InputDecoration(
+                            labelText: 'VLAN Tag (Info)',
+                            hintText: '20',
+                          ),
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) return null;
+                            final n = int.tryParse(v.trim());
+                            if (n == null || n < 1 || n > 4094) {
+                              return '1–4094';
+                            }
+                            return null;
+                          },
                         ),
                       ),
                     ),
@@ -520,6 +598,14 @@ class _ProfileEditorDialogState extends State<ProfileEditorDialog> {
                           labelText: 'MTU',
                           hintText: '1500',
                         ),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return null;
+                          final n = int.tryParse(v.trim());
+                          if (n == null || n < 576 || n > 9216) {
+                            return '576–9216';
+                          }
+                          return null;
+                        },
                       ),
                     ),
                   ],

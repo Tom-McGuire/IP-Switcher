@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:path/path.dart' as p;
 import '../../domain/models/ip_profile_model.dart';
 import '../../domain/models/ipv4_utils.dart';
 import '../../domain/models/network_interface_model.dart';
@@ -80,9 +81,10 @@ class NicBackendService {
     }
   }
 
-  /// Sanitize identifiers (interface names, connection names) to prevent shell injection.
+  /// Sanitizes identifiers (interface names, connection names) by stripping shell metacharacters
+  /// while preserving Unicode letters (e.g. "Conexión de área local") and apostrophes.
   static String sanitizeIdentifier(String input) {
-    return input.replaceAll(RegExp(r'[^a-zA-Z0-9_\-\.\s\(\):]'), '');
+    return input.replaceAll(RegExp(r'["`$;&|<>\r\n\x00\\]'), '').trim();
   }
 
   /// Sanitize IPv4 or CIDR strings.
@@ -90,31 +92,51 @@ class NicBackendService {
     return input.replaceAll(RegExp(r'[^0-9\./]'), '');
   }
 
+  /// Normalizes and validates a `IP` or `IP/CIDR` secondary alias, returning `(ip, cidr)` or null.
+  static (String ip, int cidr)? _parseValidAlias(String rawAlias) {
+    final parts = rawAlias.trim().split('/');
+    final aliasIp = sanitizeIpOrCidr(parts.first);
+    if (!Ipv4Utils.isValidIpv4(aliasIp)) return null;
+    final aliasCidr = parts.length > 1 ? int.tryParse(parts[1]) ?? 24 : 24;
+    if (aliasCidr < 1 || aliasCidr > 32) return null;
+    return (aliasIp, aliasCidr);
+  }
+
   /// Generates the deterministic OS CLI command list for a given platform, NIC, and profile.
+  /// Always targets [nic] consistently (never mixing `preferredInterface` with `nic.connectionName`).
   List<String> generateCommandsForPlatform({
     required TargetOsPlatform platform,
     required NetworkInterfaceModel nic,
     required IpProfileModel profile,
   }) {
-    final ifaceId = sanitizeIdentifier(
-      (profile.preferredInterface != null &&
-              profile.preferredInterface!.trim().isNotEmpty)
-          ? profile.preferredInterface!.trim()
-          : nic.id,
-    );
+    final ifaceId = sanitizeIdentifier(nic.id);
     final connName = sanitizeIdentifier(nic.connectionName ?? ifaceId);
 
-    final ip = sanitizeIpOrCidr(profile.ipAddress ?? '192.168.1.50');
+    String ip = '';
+    if (!profile.isDhcp) {
+      final rawIp = profile.ipAddress?.trim() ?? '';
+      if (!Ipv4Utils.isValidIpv4(rawIp)) {
+        throw ArgumentError(
+          'Static profile "${profile.name}" requires a valid IPv4 address.',
+        );
+      }
+      ip = sanitizeIpOrCidr(rawIp);
+    }
+
     final cidr =
         profile.cidrPrefix ?? Ipv4Utils.maskToCidr(profile.subnetMask) ?? 24;
     final mask = sanitizeIpOrCidr(
       profile.subnetMask ?? Ipv4Utils.cidrToMask(cidr),
     );
     final gw = (profile.defaultGateway != null &&
-            profile.defaultGateway!.trim().isNotEmpty)
+            profile.defaultGateway!.trim().isNotEmpty &&
+            Ipv4Utils.isValidIpv4(profile.defaultGateway!.trim()))
         ? sanitizeIpOrCidr(profile.defaultGateway!.trim())
         : '';
-    final dnsList = profile.dnsServersList.map(sanitizeIpOrCidr).toList();
+    final dnsList = profile.dnsServersList
+        .where(Ipv4Utils.isValidIpv4)
+        .map(sanitizeIpOrCidr)
+        .toList();
 
     switch (platform) {
       case TargetOsPlatform.windows:
@@ -181,14 +203,12 @@ class NicBackendService {
       cmds.add(
         'netsh interface ipv4 set address name="$ifaceName" static $ip $mask$gwArg',
       );
-      for (final alias in profile.secondaryIps) {
-        final parts = alias.split('/');
-        final aliasIp = sanitizeIpOrCidr(parts[0]);
-        final aliasCidr = parts.length > 1 ? int.tryParse(parts[1]) ?? 24 : 24;
-        final aliasMask = Ipv4Utils.cidrToMask(aliasCidr);
-        if (Ipv4Utils.isValidIpv4(aliasIp)) {
+      for (final rawAlias in profile.secondaryIps) {
+        final parsed = _parseValidAlias(rawAlias);
+        if (parsed != null) {
+          final aliasMask = Ipv4Utils.cidrToMask(parsed.$2);
           cmds.add(
-            'netsh interface ipv4 add address name="$ifaceName" $aliasIp $aliasMask',
+            'netsh interface ipv4 add address name="$ifaceName" ${parsed.$1} $aliasMask',
           );
         }
       }
@@ -243,13 +263,11 @@ class NicBackendService {
         );
         cmds.add('ifconfig $deviceId inet $ip netmask $mask');
       }
-      for (final alias in profile.secondaryIps) {
-        final parts = alias.split('/');
-        final aliasIp = sanitizeIpOrCidr(parts[0]);
-        final aliasCidr = parts.length > 1 ? int.tryParse(parts[1]) ?? 24 : 24;
-        final aliasMask = Ipv4Utils.cidrToMask(aliasCidr);
-        if (Ipv4Utils.isValidIpv4(aliasIp)) {
-          cmds.add('ifconfig $deviceId alias $aliasIp netmask $aliasMask');
+      for (final rawAlias in profile.secondaryIps) {
+        final parsed = _parseValidAlias(rawAlias);
+        if (parsed != null) {
+          final aliasMask = Ipv4Utils.cidrToMask(parsed.$2);
+          cmds.add('ifconfig $deviceId alias ${parsed.$1} netmask $aliasMask');
         }
       }
       if (dnsList.isEmpty) {
@@ -276,17 +294,26 @@ class NicBackendService {
     required List<String> dnsList,
   }) {
     final cmds = <String>[];
-    // Prefer NetworkManager (nmcli) when a connection profile is known, with iproute2 fallback comment/commands
+    final validAliases = <String>[];
+    for (final rawAlias in profile.secondaryIps) {
+      final parsed = _parseValidAlias(rawAlias);
+      if (parsed != null) {
+        validAliases.add('${parsed.$1}/${parsed.$2}');
+      }
+    }
+
     if (connName != null && connName.isNotEmpty && connName != '--') {
+      final mtuProp = ifaceId.startsWith('wl')
+          ? '802-11-wireless.mtu'
+          : '802-3-ethernet.mtu';
       if (profile.isDhcp) {
         cmds.add(
           'nmcli connection modify "$connName" ipv4.method auto ipv4.addresses "" ipv4.gateway "" ipv4.dns "${dnsList.join(' ')}"',
         );
-        cmds.add('nmcli connection up "$connName"');
       } else {
         final allAddrs = <String>[
           '$ip/$cidr',
-          ...profile.secondaryIps.map(sanitizeIpOrCidr),
+          ...validAliases,
         ].join(',');
         final gwPart = gw.isNotEmpty ? 'ipv4.gateway "$gw"' : 'ipv4.gateway ""';
         final dnsPart = dnsList.isNotEmpty
@@ -295,26 +322,24 @@ class NicBackendService {
         cmds.add(
           'nmcli connection modify "$connName" ipv4.method manual ipv4.addresses "$allAddrs" $gwPart $dnsPart',
         );
-        if (profile.mtu != null && profile.mtu! >= 576) {
-          cmds.add(
-            'nmcli connection modify "$connName" 802-3-ethernet.mtu ${profile.mtu}',
-          );
-        }
-        cmds.add('nmcli connection up "$connName"');
       }
+      if (profile.mtu != null && profile.mtu! >= 576) {
+        cmds.add(
+          'nmcli connection modify "$connName" $mtuProp ${profile.mtu}',
+        );
+      }
+      cmds.add('nmcli connection up "$connName"');
     } else {
       // Direct iproute2 commands
       if (profile.isDhcp) {
-        cmds.add('ip addr flush dev $ifaceId');
-        cmds.add('dhclient -r $ifaceId && dhclient $ifaceId');
+        cmds.add(
+          '(command -v dhclient >/dev/null 2>&1 && ip addr flush dev $ifaceId && dhclient -r $ifaceId && dhclient $ifaceId) || (command -v dhcpcd >/dev/null 2>&1 && dhcpcd -n $ifaceId) || networkctl reconfigure $ifaceId',
+        );
       } else {
         cmds.add('ip addr flush dev $ifaceId');
         cmds.add('ip addr add $ip/$cidr dev $ifaceId');
-        for (final alias in profile.secondaryIps) {
-          final cleanAlias = sanitizeIpOrCidr(alias);
-          if (cleanAlias.isNotEmpty) {
-            cmds.add('ip addr add $cleanAlias dev $ifaceId');
-          }
+        for (final alias in validAliases) {
+          cmds.add('ip addr add $alias dev $ifaceId');
         }
         cmds.add('ip link set dev $ifaceId up');
         if (gw.isNotEmpty) {
@@ -354,50 +379,64 @@ class NicBackendService {
     final addrRes = await Process.run('ip', ['-j', 'addr', 'show']);
     if (addrRes.exitCode != 0) return [];
 
-    // Also get default routes
+    // Per-device default routes and DHCP route tracking
     final routeMap = <String, String>{};
-    bool defaultRouteIsDhcp = false;
+    final dhcpRouteDevs = <String>{};
     try {
       final routeRes = await Process.run('ip', ['-j', 'route', 'show']);
       if (routeRes.exitCode == 0) {
         final routes = jsonDecode(routeRes.stdout.toString()) as List<dynamic>;
         for (final r in routes) {
-          if (r is Map && r['dst'] == 'default') {
+          if (r is Map) {
             final dev = r['dev']?.toString();
             final gw = r['gateway']?.toString();
             final proto = r['protocol']?.toString() ?? '';
-            if (dev != null && gw != null) {
+            if (r['dst'] == 'default' && dev != null && gw != null) {
               routeMap[dev] = gw;
             }
-            if (proto.contains('dhcp')) {
-              defaultRouteIsDhcp = true;
+            if (dev != null && proto.contains('dhcp')) {
+              dhcpRouteDevs.add(dev);
             }
           }
         }
       }
     } catch (_) {}
 
-    // Map NetworkManager connection names if nmcli is available
+    // Map NetworkManager connection names and per-device DNS if nmcli is available
     final nmConnMap = <String, String>{};
+    final perIfaceDns = <String, List<String>>{};
     try {
       final nmRes = await Process.run(
         'nmcli',
-        ['-t', '-f', 'DEVICE,CONNECTION', 'dev'],
+        ['-t', '-f', 'GENERAL.DEVICE,GENERAL.CONNECTION,IP4.DNS', 'dev', 'show'],
       );
       if (nmRes.exitCode == 0) {
-        for (final line in nmRes.stdout.toString().split('\n')) {
-          final parts = line.trim().split(':');
-          if (parts.length >= 2 && parts[0].isNotEmpty && parts[1].isNotEmpty) {
-            if (parts[1] != '--') {
-              nmConnMap[parts[0]] = parts.sublist(1).join(':');
+        String? currentDev;
+        for (final rawLine in nmRes.stdout.toString().split('\n')) {
+          final line = rawLine.trim();
+          if (line.startsWith('GENERAL.DEVICE:')) {
+            currentDev = line.substring('GENERAL.DEVICE:'.length).trim();
+          } else if (line.startsWith('GENERAL.CONNECTION:') &&
+              currentDev != null) {
+            final conn = line.substring('GENERAL.CONNECTION:'.length).trim();
+            if (conn.isNotEmpty && conn != '--') {
+              nmConnMap[currentDev] = conn;
+            }
+          } else if (line.startsWith('IP4.DNS') && currentDev != null) {
+            final idx = line.indexOf(':');
+            if (idx != -1) {
+              final dns = line.substring(idx + 1).trim();
+              if (Ipv4Utils.isValidIpv4(dns)) {
+                perIfaceDns.putIfAbsent(currentDev, () => []).add(dns);
+              }
             }
           }
         }
       }
     } catch (_) {}
 
-    // Parse DNS servers from /etc/resolv.conf
-    final dnsServers = <String>[];
+    // Fallback DNS servers from /etc/resolv.conf (excluding 127.0.0.53 stub)
+    final fallbackDns = <String>[];
     try {
       final resolvFile = File('/etc/resolv.conf');
       if (await resolvFile.exists()) {
@@ -406,15 +445,34 @@ class NicBackendService {
           final trimmed = line.trim();
           if (trimmed.startsWith('nameserver ')) {
             final dns = trimmed.substring('nameserver '.length).trim();
-            if (Ipv4Utils.isValidIpv4(dns)) {
-              dnsServers.add(dns);
+            if (Ipv4Utils.isValidIpv4(dns) && dns != '127.0.0.53') {
+              fallbackDns.add(dns);
             }
           }
         }
       }
     } catch (_) {}
 
-    final decoded = jsonDecode(addrRes.stdout.toString()) as List<dynamic>;
+    return parseLinuxIpAddrJson(
+      addrRes.stdout.toString(),
+      routeMap: routeMap,
+      dhcpRouteDevs: dhcpRouteDevs,
+      nmConnMap: nmConnMap,
+      perIfaceDns: perIfaceDns,
+      fallbackDns: fallbackDns,
+    );
+  }
+
+  /// Pure, unit-testable parser for `ip -j addr show` output on Linux.
+  static List<NetworkInterfaceModel> parseLinuxIpAddrJson(
+    String addrJson, {
+    Map<String, String> routeMap = const {},
+    Set<String> dhcpRouteDevs = const {},
+    Map<String, String> nmConnMap = const {},
+    Map<String, List<String>> perIfaceDns = const {},
+    List<String> fallbackDns = const [],
+  }) {
+    final decoded = jsonDecode(addrJson) as List<dynamic>;
     final results = <NetworkInterfaceModel>[];
 
     for (final item in decoded) {
@@ -428,18 +486,18 @@ class NicBackendService {
       final isUp = flags.contains('UP') || operstate == 'UP';
       final mac = (item['address']?.toString() ?? '00:00:00:00:00:00')
           .toUpperCase();
-      final mtu = item['mtu'] as int?;
+      final mtu = (item['mtu'] as num?)?.toInt();
 
       String? primaryIp;
       int? primaryCidr;
-      bool isDynamic = defaultRouteIsDhcp;
+      bool isDynamic = dhcpRouteDevs.contains(ifname);
       final secondaryIps = <String>[];
 
       final addrInfo = (item['addr_info'] as List?) ?? [];
       for (final addr in addrInfo) {
         if (addr is Map && addr['family'] == 'inet') {
           final localIp = addr['local']?.toString();
-          final prefixLen = addr['prefixlen'] as int?;
+          final prefixLen = (addr['prefixlen'] as num?)?.toInt();
           final dynamicFlag = addr['dynamic'] == true;
           if (localIp != null) {
             if (primaryIp == null) {
@@ -454,8 +512,8 @@ class NicBackendService {
       }
 
       final connName = nmConnMap[ifname];
-      final displayLabel =
-          connName != null ? '$ifname ($connName)' : ifname;
+      final displayLabel = connName != null ? '$ifname ($connName)' : ifname;
+      final dnsForNic = perIfaceDns[ifname] ?? fallbackDns;
 
       results.add(
         NetworkInterfaceModel(
@@ -470,7 +528,7 @@ class NicBackendService {
           currentSubnet:
               primaryCidr != null ? Ipv4Utils.cidrToMask(primaryCidr) : null,
           currentGateway: routeMap[ifname],
-          currentDns: dnsServers,
+          currentDns: dnsForNic,
           secondaryIps: secondaryIps,
           mtu: mtu,
         ),
@@ -480,13 +538,35 @@ class NicBackendService {
     return results;
   }
 
+  /// Pure, unit-testable parser for `networksetup -getinfo <service>` output on macOS.
+  static ({String? ip, String? mask, String? gw, bool isDhcp})
+      parseMacOsNetworksetupInfo(String out) {
+    String? ip;
+    String? mask;
+    String? gw;
+    final isDhcp = out.contains('DHCP Configuration');
+    for (final l in out.split('\n')) {
+      if (l.startsWith('IP address:')) {
+        final v = l.substring('IP address:'.length).trim();
+        if (Ipv4Utils.isValidIpv4(v)) ip = v;
+      } else if (l.startsWith('Subnet mask:')) {
+        final v = l.substring('Subnet mask:'.length).trim();
+        if (Ipv4Utils.isValidIpv4(v)) mask = v;
+      } else if (l.startsWith('Router:')) {
+        final v = l.substring('Router:'.length).trim();
+        if (Ipv4Utils.isValidIpv4(v)) gw = v;
+      }
+    }
+    return (ip: ip, mask: mask, gw: gw, isDhcp: isDhcp);
+  }
+
   Future<List<NetworkInterfaceModel>> _discoverMacOsInterfaces() async {
     final hwRes =
         await Process.run('networksetup', ['-listallhardwareports']);
     if (hwRes.exitCode != 0) return [];
 
-    final results = <NetworkInterfaceModel>[];
     final blocks = hwRes.stdout.toString().split('\n\n');
+    final portSpecs = <({String portName, String device, String? mac})>[];
     for (final block in blocks) {
       String? portName;
       String? device;
@@ -500,65 +580,63 @@ class NicBackendService {
           mac = line.substring('Ethernet Address:'.length).trim().toUpperCase();
         }
       }
-      if (device == null || device.isEmpty || portName == null) continue;
+      if (device != null && device.isNotEmpty && portName != null) {
+        portSpecs.add((portName: portName, device: device, mac: mac));
+      }
+    }
 
-      String? ip;
-      String? mask;
-      String? gw;
-      bool isDhcp = true;
-      bool isUp = false;
+    // Query all hardware ports in parallel
+    final results = await Future.wait(
+      portSpecs.map((spec) async {
+        final responses = await Future.wait([
+          Process.run('networksetup', ['-getinfo', spec.portName]),
+          Process.run('networksetup', ['-getdnsservers', spec.portName]),
+        ]);
+        final infoRes = responses[0];
+        final dnsRes = responses[1];
 
-      final infoRes =
-          await Process.run('networksetup', ['-getinfo', portName]);
-      if (infoRes.exitCode == 0) {
-        final out = infoRes.stdout.toString();
-        isDhcp = out.contains('DHCP Configuration');
-        for (final l in out.split('\n')) {
-          if (l.startsWith('IP address:')) {
-            final v = l.substring('IP address:'.length).trim();
-            if (Ipv4Utils.isValidIpv4(v)) ip = v;
-          } else if (l.startsWith('Subnet mask:')) {
-            final v = l.substring('Subnet mask:'.length).trim();
-            if (Ipv4Utils.isValidIpv4(v)) mask = v;
-          } else if (l.startsWith('Router:')) {
-            final v = l.substring('Router:'.length).trim();
-            if (Ipv4Utils.isValidIpv4(v)) gw = v;
+        String? ip;
+        String? mask;
+        String? gw;
+        bool isDhcp = true;
+        if (infoRes.exitCode == 0) {
+          final parsed =
+              parseMacOsNetworksetupInfo(infoRes.stdout.toString());
+          ip = parsed.ip;
+          mask = parsed.mask;
+          gw = parsed.gw;
+          isDhcp = parsed.isDhcp;
+        }
+
+        final dnsList = <String>[];
+        if (dnsRes.exitCode == 0) {
+          for (final l in dnsRes.stdout.toString().split('\n')) {
+            final trimmed = l.trim();
+            if (Ipv4Utils.isValidIpv4(trimmed)) dnsList.add(trimmed);
           }
         }
-      }
 
-      isUp = ip != null && ip.isNotEmpty;
-      final dnsList = <String>[];
-      final dnsRes =
-          await Process.run('networksetup', ['-getdnsservers', portName]);
-      if (dnsRes.exitCode == 0) {
-        for (final l in dnsRes.stdout.toString().split('\n')) {
-          final trimmed = l.trim();
-          if (Ipv4Utils.isValidIpv4(trimmed)) dnsList.add(trimmed);
-        }
-      }
-
-      results.add(
-        NetworkInterfaceModel(
-          id: device,
-          displayName: '$device ($portName)',
-          connectionName: portName,
-          macAddress: mac ?? '00:00:00:00:00:00',
-          isUp: isUp,
+        return NetworkInterfaceModel(
+          id: spec.device,
+          displayName: '${spec.device} (${spec.portName})',
+          connectionName: spec.portName,
+          macAddress: spec.mac ?? '00:00:00:00:00:00',
+          isUp: ip != null && ip.isNotEmpty,
           isDhcpEnabled: isDhcp,
           currentIp: ip,
           currentSubnet: mask,
           currentCidr: Ipv4Utils.maskToCidr(mask),
           currentGateway: gw,
           currentDns: dnsList,
-        ),
-      );
-    }
+        );
+      }),
+    );
+
     return results;
   }
 
   Future<List<NetworkInterfaceModel>> _discoverWindowsInterfaces() async {
-    final psCmd =
+    const psCmd =
         r'Get-NetIPConfiguration | Select-Object InterfaceAlias,InterfaceIndex,@{Name="IPv4";Expression={$_.IPv4Address.IPAddress}},@{Name="Prefix";Expression={$_.IPv4Address.PrefixLength}},@{Name="Gateway";Expression={$_.IPv4DefaultGateway.NextHop}},@{Name="DNS";Expression={$_.DnsServer.ServerAddresses}},@{Name="Status";Expression={$_.NetAdapter.Status}},@{Name="Mac";Expression={$_.NetAdapter.MacAddress}},@{Name="Dhcp";Expression={$_.NetIPv4Interface.Dhcp}} | ConvertTo-Json';
     final res = await Process.run(
       'powershell',
@@ -567,8 +645,12 @@ class NicBackendService {
     if (res.exitCode != 0) return [];
     final raw = res.stdout.toString().trim();
     if (raw.isEmpty) return [];
+    return parseWindowsNetIpJson(raw);
+  }
 
-    final decoded = jsonDecode(raw);
+  /// Pure, unit-testable parser for Windows `Get-NetIPConfiguration | ConvertTo-Json` output.
+  static List<NetworkInterfaceModel> parseWindowsNetIpJson(String rawJson) {
+    final decoded = jsonDecode(rawJson);
     final items = decoded is List ? decoded : [decoded];
     final results = <NetworkInterfaceModel>[];
 
@@ -645,12 +727,10 @@ class NicBackendService {
         id: nic.name,
         displayName: nic.name,
         connectionName: nic.name,
-        macAddress: '00:1A:2B:3C:4D:5E',
+        macAddress: '—',
         isUp: ip != null,
-        isDhcpEnabled: true,
+        isDhcpEnabled: false,
         currentIp: ip,
-        currentCidr: 24,
-        currentSubnet: '255.255.255.0',
       );
     }).toList();
   }
@@ -680,20 +760,15 @@ class NicBackendService {
       );
     }
 
+    if (Platform.isWindows && !isAlreadyElevated) {
+      return _executeWindowsElevatedBatch(commands);
+    }
+
     final combinedScript = commands.join(' && ');
     try {
       Process process;
       if (Platform.isWindows) {
-        if (isAlreadyElevated) {
-          process = await Process.start('cmd', ['/c', combinedScript]);
-        } else {
-          final escaped = combinedScript.replaceAll('"', '\\"');
-          process = await Process.start('powershell', [
-            '-NoProfile',
-            '-Command',
-            'Start-Process cmd -ArgumentList \'/c $escaped\' -Verb RunAs -Wait -WindowStyle Hidden',
-          ]);
-        }
+        process = await Process.start('cmd', ['/c', combinedScript]);
       } else if (Platform.isMacOS) {
         if (isAlreadyElevated) {
           process = await Process.start('sh', ['-c', combinedScript]);
@@ -739,6 +814,75 @@ class NicBackendService {
         stderr: 'Failed to invoke OS network command runner: $e',
         executedCommands: commands,
       );
+    }
+  }
+
+  /// Writes a temporary `.cmd` script on Windows, launches it elevated via `Start-Process -Verb RunAs -Wait -PassThru`,
+  /// captures the real child exit code and redirected output logs, and cleans up temp files.
+  Future<CommandRunResult> _executeWindowsElevatedBatch(
+    List<String> commands,
+  ) async {
+    final stamp = DateTime.now().microsecondsSinceEpoch;
+    final tempDir = Directory.systemTemp;
+    final cmdFile = File(p.join(tempDir.path, 'ip_setter_$stamp.cmd'));
+    final outFile = File(p.join(tempDir.path, 'ip_setter_out_$stamp.log'));
+    final errFile = File(p.join(tempDir.path, 'ip_setter_err_$stamp.log'));
+
+    final buffer = StringBuffer('@echo off\r\n');
+    for (final c in commands) {
+      buffer.writeln(
+        '$c >> "${outFile.path}" 2>> "${errFile.path}"',
+      );
+      buffer.writeln('if %errorlevel% neq 0 exit /b %errorlevel%');
+    }
+    buffer.writeln('exit /b 0');
+
+    try {
+      await cmdFile.writeAsString(buffer.toString(), flush: true);
+      final psScript =
+          "\$p = Start-Process -FilePath 'cmd.exe' -ArgumentList '/c \"${cmdFile.path}\"' -Verb RunAs -Wait -PassThru -WindowStyle Hidden; if (\$null -eq \$p) { exit 1223 } else { exit \$p.ExitCode }";
+      final process = await Process.start('powershell', [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        psScript,
+      ]);
+      _activeProcesses.add(process);
+      final psErrFuture = process.stderr.transform(utf8.decoder).join();
+      final exitCode = await process.exitCode;
+      _activeProcesses.remove(process);
+
+      final psErr = (await psErrFuture).trim();
+      final outStr =
+          await outFile.exists() ? (await outFile.readAsString()).trim() : '';
+      final errStr =
+          await errFile.exists() ? (await errFile.readAsString()).trim() : '';
+      final combinedErr = [
+        if (errStr.isNotEmpty) errStr,
+        if (psErr.isNotEmpty) psErr,
+      ].join('\n');
+
+      return CommandRunResult(
+        exitCode: exitCode,
+        stdout: outStr.isEmpty && exitCode == 0
+            ? 'Successfully executed ${commands.length} command(s).'
+            : outStr,
+        stderr: combinedErr,
+        executedCommands: commands,
+      );
+    } catch (e) {
+      return CommandRunResult(
+        exitCode: 1,
+        stdout: '',
+        stderr: 'Failed to run elevated Windows network script: $e',
+        executedCommands: commands,
+      );
+    } finally {
+      for (final f in [cmdFile, outFile, errFile]) {
+        try {
+          if (await f.exists()) await f.delete();
+        } catch (_) {}
+      }
     }
   }
 }

@@ -16,6 +16,7 @@ class NetworkInterfaceModel {
   final List<String> secondaryIps;
   final int? mtu;
   final bool isLoopback;
+  final bool isPlaceholder;
 
   const NetworkInterfaceModel({
     required this.id,
@@ -32,6 +33,7 @@ class NetworkInterfaceModel {
     this.secondaryIps = const [],
     this.mtu,
     this.isLoopback = false,
+    this.isPlaceholder = false,
   });
 
   String get formattedIpWithCidr {
@@ -103,6 +105,7 @@ class NetworkInterfaceModel {
     List<String>? secondaryIps,
     int? mtu,
     bool? isLoopback,
+    bool? isPlaceholder,
   }) {
     return NetworkInterfaceModel(
       id: id ?? this.id,
@@ -119,6 +122,7 @@ class NetworkInterfaceModel {
       secondaryIps: secondaryIps ?? this.secondaryIps,
       mtu: mtu ?? this.mtu,
       isLoopback: isLoopback ?? this.isLoopback,
+      isPlaceholder: isPlaceholder ?? this.isPlaceholder,
     );
   }
 }
