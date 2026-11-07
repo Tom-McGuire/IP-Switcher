@@ -66,43 +66,47 @@ class _ImportExportDialogState extends State<ImportExportDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      child: Container(
-        width: 580,
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons.import_export,
-                  size: 18,
-                  color: AppTheme.secondaryCyan,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Import / Export IP Profile Presets (JSON)',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 680),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.import_export,
+                    size: 18,
+                    color: AppTheme.secondaryCyan,
                   ),
-                ),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: () async {
-                    await widget.onResetDefaults();
-                    if (context.mounted) Navigator.of(context).pop();
-                  },
-                  icon: const Icon(Icons.restore, size: 14),
-                  label: const Text(
-                    'Restore Factory Presets',
-                    style: TextStyle(fontSize: 11),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Import / Export Presets (JSON)',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
-              ],
-            ),
+                  const SizedBox(width: 8),
+                  TextButton.icon(
+                    onPressed: () async {
+                      await widget.onResetDefaults();
+                      if (context.mounted) Navigator.of(context).pop();
+                    },
+                    icon: const Icon(Icons.restore, size: 14),
+                    label: const Text(
+                      'Restore Factory Presets',
+                      style: TextStyle(fontSize: 11),
+                    ),
+                  ),
+                ],
+              ),
             const SizedBox(height: 10),
             const Text(
               'Copy the JSON below to share presets across workstations, or paste a JSON bundle and click Import.',
@@ -168,6 +172,7 @@ class _ImportExportDialogState extends State<ImportExportDialog> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

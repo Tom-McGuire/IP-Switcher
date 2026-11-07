@@ -123,8 +123,9 @@ flutter run
 ### Run Tests
 ```bash
 flutter analyze
-flutter test
+flutter test --coverage
 ```
+The project includes a comprehensive suite of 52 unit and widget tests covering IPv4 utilities, SQLite preset persistence, view models, diff computation, and UI dialogs with >72% code coverage.
 
 ### Build Platform Binaries
 ```bash

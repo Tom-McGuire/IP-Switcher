@@ -46,8 +46,8 @@ class _ProfileDataTableState extends State<ProfileDataTable> {
       id: 'status',
       label: 'STATE',
       sortColumn: ProfileSortColumn.status,
-      defaultWidth: 105,
-      minWidth: 85,
+      defaultWidth: 115,
+      minWidth: 95,
     ),
     TableColumnSpec(
       id: 'name',
@@ -97,7 +97,7 @@ class _ProfileDataTableState extends State<ProfileDataTable> {
     for (final spec in _columnSpecs) spec.id: spec.defaultWidth,
   };
 
-  static const double _actionsColWidth = 172;
+  static const double _actionsColWidth = 195;
 
   @override
   void dispose() {
@@ -802,6 +802,10 @@ class _ProfileRowWidgetState extends State<_ProfileRowWidget> {
                         tooltip: 'More Actions',
                         icon: const Icon(Icons.more_vert, size: 15),
                         padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 26,
+                          minHeight: 26,
+                        ),
                         color: AppTheme.surfaceHigh,
                         onSelected: (val) {
                           if (val == 'duplicate') widget.onDuplicate();

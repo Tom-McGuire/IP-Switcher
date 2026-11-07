@@ -234,7 +234,7 @@ class ManageCategoriesDialog extends StatelessWidget {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560, maxHeight: 520),
+        constraints: const BoxConstraints(maxWidth: 620, maxHeight: 520),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -248,14 +248,17 @@ class ManageCategoriesDialog extends StatelessWidget {
                     color: AppTheme.primaryAccent,
                   ),
                   const SizedBox(width: 10),
-                  const Text(
-                    'Manage Filter Categories',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                  const Expanded(
+                    child: Text(
+                      'Manage Filter Categories',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   FilledButton.tonalIcon(
                     icon: const Icon(Icons.add, size: 16),
                     label: const Text('Add Category'),

@@ -115,7 +115,7 @@ class _FilterTriageToolbarState extends State<FilterTriageToolbar> {
                         ping.isReachable
                             ? '${ping.latencyMs?.toStringAsFixed(1) ?? "<1"} ms'
                             : 'NO REPLY',
-                        style: AppTheme.monoStyle(
+                        style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           color: ping.isReachable
@@ -443,17 +443,16 @@ class _FilterTriageToolbarState extends State<FilterTriageToolbar> {
         Text(
           '$label: ',
           style: const TextStyle(
-            fontSize: 10.5,
-            fontWeight: FontWeight.bold,
+            fontSize: 11,
             color: AppTheme.textMuted,
           ),
         ),
         Flexible(
           child: Text(
             value,
-            style: AppTheme.monoStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w500,
               color: valueColor,
             ),
             overflow: TextOverflow.ellipsis,

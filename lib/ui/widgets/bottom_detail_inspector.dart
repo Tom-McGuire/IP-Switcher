@@ -56,67 +56,78 @@ class _BottomDetailInspectorState extends State<BottomDetailInspector> {
                   ),
                   child: Row(
                     children: [
-                      StatusBadge(
-                        label: profile.isDhcp ? 'DHCP' : 'STATIC',
-                        color: profile.isDhcp
-                            ? AppTheme.success
-                            : AppTheme.primaryAccent,
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        profile.name,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        '[${profile.formattedIpWithCidr}]',
-                        style: AppTheme.monoStyle(
-                          fontSize: 11.5,
-                          color: AppTheme.secondaryCyan,
-                        ),
-                      ),
-                      if (profile.lastAppliedAt != null) ...[
-                        const SizedBox(width: 12),
-                        Text(
-                          'Last Applied: ${_formatTimestamp(profile.lastAppliedAt!)}',
-                          style: AppTheme.monoStyle(
-                            fontSize: 10.5,
-                            color: AppTheme.textMuted,
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              StatusBadge(
+                                label: profile.isDhcp ? 'DHCP' : 'STATIC',
+                                color: profile.isDhcp
+                                    ? AppTheme.success
+                                    : AppTheme.primaryAccent,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                profile.name,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                '[${profile.formattedIpWithCidr}]',
+                                style: AppTheme.monoStyle(
+                                  fontSize: 11.5,
+                                  color: AppTheme.secondaryCyan,
+                                ),
+                              ),
+                              if (profile.lastAppliedAt != null) ...[
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Last Applied: ${_formatTimestamp(profile.lastAppliedAt!)}',
+                                  style: AppTheme.monoStyle(
+                                    fontSize: 10.5,
+                                    color: AppTheme.textMuted,
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(width: 18),
+
+                              // Multi-mode Inspector Tabs
+                              _buildTabButton(
+                                index: 0,
+                                currentIndex: vm.inspectorTabIndex,
+                                icon: Icons.compare_arrows,
+                                label: 'Summary & NIC Diff',
+                                onTap: () => vm.setInspectorTab(0),
+                              ),
+                              const SizedBox(width: 6),
+                              _buildTabButton(
+                                index: 1,
+                                currentIndex: vm.inspectorTabIndex,
+                                icon: Icons.terminal,
+                                label: 'CLI Command Preview',
+                                onTap: () => vm.setInspectorTab(1),
+                              ),
+                              const SizedBox(width: 6),
+                              _buildTabButton(
+                                index: 2,
+                                currentIndex: vm.inspectorTabIndex,
+                                icon: Icons.history,
+                                label:
+                                    'Execution Logs (${vm.executionLogs.length})',
+                                onTap: () => vm.setInspectorTab(2),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                      const SizedBox(width: 18),
+                      ),
+                      const SizedBox(width: 8),
 
-                      // Multi-mode Inspector Tabs
-                      _buildTabButton(
-                        index: 0,
-                        currentIndex: vm.inspectorTabIndex,
-                        icon: Icons.compare_arrows,
-                        label: 'Summary & NIC Diff',
-                        onTap: () => vm.setInspectorTab(0),
-                      ),
-                      const SizedBox(width: 6),
-                      _buildTabButton(
-                        index: 1,
-                        currentIndex: vm.inspectorTabIndex,
-                        icon: Icons.terminal,
-                        label: 'CLI Command Preview',
-                        onTap: () => vm.setInspectorTab(1),
-                      ),
-                      const SizedBox(width: 6),
-                      _buildTabButton(
-                        index: 2,
-                        currentIndex: vm.inspectorTabIndex,
-                        icon: Icons.history,
-                        label: 'Execution Logs (${vm.executionLogs.length})',
-                        onTap: () => vm.setInspectorTab(2),
-                      ),
-
-                      const Spacer(),
                       // Copy CLI / Summary button
                       SizedBox(
                         height: 26,
