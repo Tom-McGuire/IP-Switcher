@@ -406,10 +406,10 @@ Router: 192.168.10.1
       ),
     );
 
-    expect(find.text('IP Profile Switcher'), findsOneWidget);
+    expect(find.text('IP PROFILE SWITCHER'), findsOneWidget);
     expect(find.text('New Preset'), findsOneWidget);
     expect(find.text('Quick DHCP'), findsOneWidget);
-    expect(find.text('Demo Presets'), findsOneWidget);
+    expect(find.text('Load Demo'), findsOneWidget);
     expect(find.text('Dry-Run Mode'), findsOneWidget);
   });
 }
