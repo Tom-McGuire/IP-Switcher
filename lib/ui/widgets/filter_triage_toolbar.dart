@@ -49,7 +49,7 @@ class _FilterTriageToolbarState extends State<FilterTriageToolbar> {
     final visibleCategories = vm.visibleCategories;
 
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppTheme.surface,
         border: Border(bottom: BorderSide(color: AppTheme.border)),
       ),
@@ -61,7 +61,7 @@ class _FilterTriageToolbarState extends State<FilterTriageToolbar> {
             Container(
               height: 34,
               padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AppTheme.surfaceLow,
                 border: Border(bottom: BorderSide(color: AppTheme.border)),
               ),
@@ -146,7 +146,7 @@ class _FilterTriageToolbarState extends State<FilterTriageToolbar> {
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(color: AppTheme.inputBorder),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
@@ -154,7 +154,7 @@ class _FilterTriageToolbarState extends State<FilterTriageToolbar> {
                               size: 12,
                               color: AppTheme.secondaryCyan,
                             ),
-                            SizedBox(width: 5),
+                            const SizedBox(width: 5),
                             Text(
                               'Snapshot NIC',
                               style: TextStyle(
@@ -187,14 +187,14 @@ class _FilterTriageToolbarState extends State<FilterTriageToolbar> {
                       child: TextField(
                         controller: _searchController,
                         onChanged: vm.setSearchQuery,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           color: AppTheme.textPrimary,
                         ),
                         decoration: InputDecoration(
                           hintText:
                               'Filter presets by name, IP, subnet, GW, notes...',
-                          prefixIcon: const Icon(
+                          prefixIcon: Icon(
                             Icons.search,
                             size: 15,
                             color: AppTheme.textSecondary,
@@ -263,12 +263,12 @@ class _FilterTriageToolbarState extends State<FilterTriageToolbar> {
                                     color:
                                         AppTheme.error.withValues(alpha: 0.4),
                                   ),
-                                  avatar: const Icon(
+                                  avatar: Icon(
                                     Icons.filter_alt_off_outlined,
                                     size: 13,
                                     color: AppTheme.error,
                                   ),
-                                  label: const Text(
+                                  label: Text(
                                     'Clear All Filters',
                                     style: TextStyle(
                                       fontSize: 11,
@@ -309,18 +309,18 @@ class _FilterTriageToolbarState extends State<FilterTriageToolbar> {
                 // Bottom sub-row: Packet-Inspector style Categories Filter Row
                 Row(
                   children: [
-                    const Padding(
-                      padding: EdgeInsets.only(right: 10),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 10),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
                             Icons.label_outline,
                             size: 14,
-                            color: Colors.blueAccent,
+                            color: AppTheme.primaryAccent,
                           ),
-                          SizedBox(width: 5),
-                          Text(
+                          const SizedBox(width: 5),
+                          const Text(
                             'Categories',
                             style: TextStyle(
                               fontSize: 12,
@@ -435,14 +435,14 @@ class _FilterTriageToolbarState extends State<FilterTriageToolbar> {
   Widget _buildTelemetryMetric(
     String label,
     String value, {
-    Color valueColor = AppTheme.textPrimary,
+    Color? valueColor,
   }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           '$label: ',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             color: AppTheme.textMuted,
           ),
@@ -453,7 +453,7 @@ class _FilterTriageToolbarState extends State<FilterTriageToolbar> {
             style: TextStyle(
               fontSize: 11.5,
               fontWeight: FontWeight.w500,
-              color: valueColor,
+              color: valueColor ?? AppTheme.textPrimary,
             ),
             overflow: TextOverflow.ellipsis,
           ),

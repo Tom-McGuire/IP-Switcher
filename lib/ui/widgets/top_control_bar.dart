@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../domain/models/network_interface_model.dart';
+import '../../theme/app_theme.dart';
 import '../view_models/ip_setter_view_model.dart';
 
 class TopControlBar extends StatelessWidget {
@@ -21,10 +22,10 @@ class TopControlBar extends StatelessWidget {
 
     return Container(
       height: 52,
-      decoration: const BoxDecoration(
-        color: Color(0xFF1E1E1E),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
         border: Border(
-          bottom: BorderSide(color: Color(0xFF2C2C2C), width: 1),
+          bottom: BorderSide(color: AppTheme.border, width: 1),
         ),
       ),
       child: LayoutBuilder(
@@ -51,16 +52,16 @@ class TopControlBar extends StatelessWidget {
                             child: Image.asset(
                               'assets/app_icon.png',
                               fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => const Icon(
+                              errorBuilder: (_, _, _) => Icon(
                                 Icons.settings_ethernet,
-                                color: Color(0xFF007ACC),
+                                color: AppTheme.primaryAccent,
                                 size: 24,
                               ),
                             ),
                           ),
                         ),
                         const SizedBox(width: 10),
-                        const Column(
+                        Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -70,14 +71,14 @@ class TopControlBar extends StatelessWidget {
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 0.8,
-                                color: Colors.white,
+                                color: AppTheme.textPrimary,
                               ),
                             ),
                             Text(
                               'NIC Quick-Config • Static IPv4 • Subnet • Gateway • DNS',
                               style: TextStyle(
                                 fontSize: 10,
-                                color: Colors.white54,
+                                color: AppTheme.textSecondary,
                               ),
                             ),
                           ],
@@ -89,20 +90,24 @@ class TopControlBar extends StatelessWidget {
                           height: 32,
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF252526),
+                            color: AppTheme.inputFill,
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: const Color(0xFF3E3E42)),
+                            border: Border.all(color: AppTheme.inputBorder),
                           ),
                           child: DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
                               value: selectedNic?.id,
                               isDense: true,
-                              icon: const Icon(Icons.arrow_drop_down, size: 18),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.white,
+                              icon: Icon(
+                                Icons.arrow_drop_down,
+                                size: 18,
+                                color: AppTheme.textSecondary,
                               ),
-                              dropdownColor: const Color(0xFF252526),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textPrimary,
+                              ),
+                              dropdownColor: AppTheme.surfaceElevated,
                               onChanged: vm.isApplying
                                   ? null
                                   : (String? id) {
@@ -129,10 +134,8 @@ class TopControlBar extends StatelessWidget {
                                         icon,
                                         size: 14,
                                         color: nic.isUp
-                                            ? Theme.of(context)
-                                                .colorScheme
-                                                .primary
-                                            : Colors.grey,
+                                            ? AppTheme.primaryAccent
+                                            : AppTheme.textMuted,
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
@@ -193,8 +196,8 @@ class TopControlBar extends StatelessWidget {
                           onPressed: vm.isApplying ? null : onNewProfile,
                           style: FilledButton.styleFrom(
                             backgroundColor: vm.isApplying
-                                ? const Color(0xFFEF4444)
-                                : const Color(0xFF10B981),
+                                ? AppTheme.error
+                                : AppTheme.success,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 14,
@@ -251,16 +254,16 @@ class TopControlBar extends StatelessWidget {
                                   : Icons.science_outlined,
                               size: 15,
                               color: vm.dryRunMode
-                                  ? const Color(0xFFF59E0B)
-                                  : Colors.grey,
+                                  ? AppTheme.warning
+                                  : AppTheme.textMuted,
                             ),
                             label: Text(
                               vm.dryRunMode ? 'Dry-Run (On)' : 'Dry-Run Mode',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: vm.dryRunMode
-                                    ? const Color(0xFFF59E0B)
-                                    : Colors.white70,
+                                    ? AppTheme.warning
+                                    : AppTheme.textSecondary,
                                 fontWeight: vm.dryRunMode
                                     ? FontWeight.bold
                                     : FontWeight.normal,
@@ -269,8 +272,8 @@ class TopControlBar extends StatelessWidget {
                             style: OutlinedButton.styleFrom(
                               side: BorderSide(
                                 color: vm.dryRunMode
-                                    ? const Color(0xFFF59E0B)
-                                    : const Color(0xFF3E3E42),
+                                    ? AppTheme.warning
+                                    : AppTheme.inputBorder,
                               ),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 10,
@@ -289,10 +292,10 @@ class TopControlBar extends StatelessWidget {
                             onPressed: vm.isApplying
                                 ? null
                                 : () => vm.undoLastSwitch(),
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.undo,
                               size: 15,
-                              color: Color(0xFFF59E0B),
+                              color: AppTheme.warning,
                             ),
                             label: const Text(
                               'Undo Switch',
@@ -380,7 +383,7 @@ class TopControlBar extends StatelessWidget {
                             style: TextStyle(fontSize: 11),
                           ),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red.shade300,
+                            foregroundColor: AppTheme.error,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
                               vertical: 8,
@@ -444,29 +447,29 @@ class TopControlBar extends StatelessWidget {
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(
-                                color: const Color(0xFF2C2C2C),
+                                color: AppTheme.border,
                               ),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
                                   Icons.download,
                                   size: 15,
-                                  color: Colors.white70,
+                                  color: AppTheme.textSecondary,
                                 ),
-                                SizedBox(width: 6),
+                                const SizedBox(width: 6),
                                 Text(
                                   'Export',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: Colors.white70,
+                                    color: AppTheme.textSecondary,
                                   ),
                                 ),
                                 Icon(
                                   Icons.arrow_drop_down,
                                   size: 14,
-                                  color: Colors.white70,
+                                  color: AppTheme.textSecondary,
                                 ),
                               ],
                             ),
@@ -498,7 +501,10 @@ class TopControlBar extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.error,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () {
               Navigator.of(ctx).pop();
               vm.clearAllPresets();

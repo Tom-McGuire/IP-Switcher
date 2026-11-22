@@ -40,7 +40,7 @@ class _BottomDetailInspectorState extends State<BottomDetailInspector> {
         if (vm.isInspectorVisible && profile != null)
           Container(
             height: 248,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppTheme.surfaceHigh,
               border: Border(top: BorderSide(color: AppTheme.border)),
             ),
@@ -50,7 +50,7 @@ class _BottomDetailInspectorState extends State<BottomDetailInspector> {
                 Container(
                   height: 36,
                   padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppTheme.surface,
                     border: Border(bottom: BorderSide(color: AppTheme.border)),
                   ),
@@ -71,7 +71,7 @@ class _BottomDetailInspectorState extends State<BottomDetailInspector> {
                               const SizedBox(width: 10),
                               Text(
                                 profile.name,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold,
                                   color: AppTheme.textPrimary,
@@ -154,7 +154,7 @@ class _BottomDetailInspectorState extends State<BottomDetailInspector> {
                           ),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 8),
-                            side: const BorderSide(color: AppTheme.inputBorder),
+                            side: BorderSide(color: AppTheme.inputBorder),
                           ),
                         ),
                       ),
@@ -192,7 +192,7 @@ class _BottomDetailInspectorState extends State<BottomDetailInspector> {
         Container(
           height: 26,
           padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: AppTheme.surfaceLow,
             border: Border(top: BorderSide(color: AppTheme.border)),
           ),
@@ -223,7 +223,7 @@ class _BottomDetailInspectorState extends State<BottomDetailInspector> {
               const SizedBox(width: 16),
               Text(
                 'Showing ${vm.filteredProfiles.length} of ${vm.allProfiles.length} presets',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10.5,
                   color: AppTheme.textSecondary,
                 ),
@@ -238,8 +238,8 @@ class _BottomDetailInspectorState extends State<BottomDetailInspector> {
                       vm.selectProfile(vm.filteredProfiles.first);
                     }
                   },
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Text(
                       '▲ Inspector',
                       style: TextStyle(
@@ -359,13 +359,13 @@ class _BottomDetailInspectorState extends State<BottomDetailInspector> {
                   Container(
                     height: 26,
                     padding: const EdgeInsets.symmetric(horizontal: 10),
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: AppTheme.surfaceHighest,
-                      borderRadius: BorderRadius.vertical(
+                      borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(5),
                       ),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
                         SizedBox(
                           width: 130,
@@ -388,7 +388,7 @@ class _BottomDetailInspectorState extends State<BottomDetailInspector> {
                             ),
                           ),
                         ),
-                        SizedBox(width: 24),
+                        const SizedBox(width: 24),
                         Expanded(
                           child: Text(
                             'TARGET PRESET STATE',
@@ -407,7 +407,7 @@ class _BottomDetailInspectorState extends State<BottomDetailInspector> {
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       itemCount: diffs.length,
                       separatorBuilder: (_, _) =>
-                          const Divider(height: 1, color: AppTheme.border),
+                          Divider(height: 1, color: AppTheme.border),
                       itemBuilder: (context, i) {
                         final d = diffs[i];
                         return Padding(
@@ -421,7 +421,7 @@ class _BottomDetailInspectorState extends State<BottomDetailInspector> {
                                 width: 130,
                                 child: Text(
                                   d.label,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
                                     color: AppTheme.textSecondary,
@@ -436,7 +436,7 @@ class _BottomDetailInspectorState extends State<BottomDetailInspector> {
                                           fontSize: 11,
                                           color: AppTheme.textSecondary,
                                         )
-                                      : const TextStyle(
+                                      : TextStyle(
                                           fontSize: 11,
                                           color: AppTheme.textSecondary,
                                         ),
@@ -505,7 +505,7 @@ class _BottomDetailInspectorState extends State<BottomDetailInspector> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'CALCULATED SUBNET & METADATA',
                     style: TextStyle(
                       fontSize: 10.5,
@@ -533,7 +533,7 @@ class _BottomDetailInspectorState extends State<BottomDetailInspector> {
                   ),
                   const SizedBox(height: 8),
                   if (profile.notes.isNotEmpty) ...[
-                    const Text(
+                    Text(
                       'Notes:',
                       style: TextStyle(
                         fontSize: 11,
@@ -545,7 +545,7 @@ class _BottomDetailInspectorState extends State<BottomDetailInspector> {
                     Expanded(
                       child: Text(
                         profile.notes,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11.5,
                           color: AppTheme.textPrimary,
                         ),
@@ -603,20 +603,20 @@ class _BottomDetailInspectorState extends State<BottomDetailInspector> {
             Container(
               height: 34,
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(color: AppTheme.cliCardBorder),
                 ),
               ),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.terminal,
                     size: 15,
                     color: AppTheme.secondaryCyan,
                   ),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'Generated Command',
                     style: TextStyle(
                       fontSize: 12,
@@ -713,7 +713,7 @@ class _BottomDetailInspectorState extends State<BottomDetailInspector> {
   Widget _buildExecutionLogsTab(IpSetterViewModel vm) {
     final logs = vm.executionLogs;
     if (logs.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           'No profile switches executed yet in this session.',
           style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
@@ -727,7 +727,7 @@ class _BottomDetailInspectorState extends State<BottomDetailInspector> {
         children: [
           Row(
             children: [
-              const Text(
+              Text(
                 'RECENT ADAPTER CONFIGURATION & PING VERIFICATION LOGS',
                 style: TextStyle(
                   fontSize: 10.5,
@@ -751,7 +751,7 @@ class _BottomDetailInspectorState extends State<BottomDetailInspector> {
             child: ListView.separated(
               itemCount: logs.length,
               separatorBuilder: (_, _) =>
-                  const Divider(height: 1, color: AppTheme.border),
+                  Divider(height: 1, color: AppTheme.border),
               itemBuilder: (context, index) {
                 final log = logs[index];
                 return Padding(
@@ -778,7 +778,7 @@ class _BottomDetailInspectorState extends State<BottomDetailInspector> {
                       const SizedBox(width: 10),
                       Text(
                         '${log.profileName} → ${log.interfaceName}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11.5,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.textPrimary,

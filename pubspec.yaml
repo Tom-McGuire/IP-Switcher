@@ -4,7 +4,7 @@ homepage: https://github.com/Tom-McGuire/IP-Switcher
 repository: https://github.com/Tom-McGuire/IP-Switcher
 publish_to: 'none'
 
-version: 0.6.2+4
+version: 0.6.3+5
 
 environment:
   sdk: ^3.13.5
@@ -12,6 +12,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  network_suite_shared:
+    git:
+      url: https://github.com/Tom-McGuire/network-suite-shared.git
+      ref: main
   provider: ^6.1.5+1
   sqflite_common_ffi: ^2.4.5
   path: ^1.9.1

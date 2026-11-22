@@ -132,9 +132,9 @@ class _AddEditCategoryDialogState extends State<AddEditCategoryDialog> {
                 onSubmitted: (_) => _save(),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Color Badge:',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
               ),
               const SizedBox(height: 8),
               Wrap(
@@ -152,7 +152,7 @@ class _AddEditCategoryDialogState extends State<AddEditCategoryDialog> {
                         color: Color(hex),
                         shape: BoxShape.circle,
                         border: isSelected
-                            ? Border.all(color: Colors.white, width: 2.5)
+                            ? Border.all(color: AppTheme.textPrimary, width: 2.5)
                             : null,
                         boxShadow: isSelected
                             ? [
@@ -178,8 +178,8 @@ class _AddEditCategoryDialogState extends State<AddEditCategoryDialog> {
                 const SizedBox(height: 12),
                 Text(
                   _errorText!,
-                  style: const TextStyle(
-                    color: Colors.redAccent,
+                  style: TextStyle(
+                    color: AppTheme.error,
                     fontSize: 12,
                   ),
                 ),
@@ -191,14 +191,14 @@ class _AddEditCategoryDialogState extends State<AddEditCategoryDialog> {
                   if (isEdit) ...[
                     TextButton.icon(
                       onPressed: _delete,
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.delete_outline,
                         size: 16,
-                        color: Colors.redAccent,
+                        color: AppTheme.error,
                       ),
-                      label: const Text(
+                      label: Text(
                         'Delete',
-                        style: TextStyle(color: Colors.redAccent),
+                        style: TextStyle(color: AppTheme.error),
                       ),
                     ),
                     const Spacer(),
@@ -242,7 +242,7 @@ class ManageCategoriesDialog extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.bookmarks_outlined,
                     size: 20,
                     color: AppTheme.primaryAccent,
@@ -275,17 +275,17 @@ class ManageCategoriesDialog extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 'Assign colors, toggle filter bar visibility, or rename/create preset categories.',
                 style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
               ),
               const Divider(height: 20),
               Expanded(
                 child: categories.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Text(
                           'No categories defined.',
-                          style: TextStyle(color: Colors.grey),
+                          style: TextStyle(color: AppTheme.textSecondary),
                         ),
                       )
                     : ListView.separated(
@@ -319,9 +319,9 @@ class ManageCategoriesDialog extends StatelessWidget {
                             ),
                             subtitle: Text(
                               '$count preset${count == 1 ? '' : 's'}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
-                                color: Colors.grey,
+                                color: AppTheme.textSecondary,
                               ),
                             ),
                             trailing: Row(
@@ -334,8 +334,8 @@ class ManageCategoriesDialog extends StatelessWidget {
                                         : Icons.visibility_off,
                                     size: 18,
                                     color: cat.isVisible
-                                        ? Colors.blueAccent
-                                        : Colors.grey,
+                                        ? AppTheme.primaryAccent
+                                        : AppTheme.textMuted,
                                   ),
                                   tooltip: cat.isVisible
                                       ? 'Hide from Filter Bar'
@@ -354,10 +354,10 @@ class ManageCategoriesDialog extends StatelessWidget {
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(
+                                  icon: Icon(
                                     Icons.delete_outline,
                                     size: 18,
-                                    color: Colors.redAccent,
+                                    color: AppTheme.error,
                                   ),
                                   tooltip: 'Delete Category',
                                   onPressed: () => vm.deleteCategory(cat),

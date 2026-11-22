@@ -99,7 +99,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           // 4. PRIMARY DATA WORKSPACE (Expanded Virtualized Data Table)
           Expanded(
             child: isLoading
-                ? const Center(
+                ? Center(
                     child: CircularProgressIndicator(
                       color: AppTheme.primaryAccent,
                     ),

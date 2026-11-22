@@ -16,7 +16,7 @@ class StatusAlertBanner extends StatelessWidget {
         color: AppTheme.primaryAccent.withValues(alpha: 0.18),
         child: Row(
           children: [
-            const SizedBox(
+            SizedBox(
               width: 13,
               height: 13,
               child: CircularProgressIndicator(
@@ -28,7 +28,7 @@ class StatusAlertBanner extends StatelessWidget {
             Expanded(
               child: Text(
                 vm.bannerMessage ?? 'Reconfiguring network adapter...',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   color: AppTheme.secondaryCyan,
                   fontWeight: FontWeight.w600,
@@ -63,7 +63,7 @@ class StatusAlertBanner extends StatelessWidget {
             Expanded(
               child: Text(
                 vm.bannerMessage!,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   color: AppTheme.textPrimary,
                   fontWeight: FontWeight.w500,
@@ -78,7 +78,7 @@ class StatusAlertBanner extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   minimumSize: const Size(0, 22),
                 ),
-                child: const Text(
+                child: Text(
                   'View Error Log',
                   style: TextStyle(
                     fontSize: 11,

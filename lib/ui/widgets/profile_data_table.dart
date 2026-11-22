@@ -186,7 +186,7 @@ class _ProfileDataTableState extends State<ProfileDataTable> {
                               child: ListView.separated(
                                 controller: _verticalScrollController,
                                 itemCount: profiles.length,
-                                separatorBuilder: (_, _) => const Divider(
+                                separatorBuilder: (_, _) => Divider(
                                   height: 1,
                                   thickness: 1,
                                   color: AppTheme.border,
@@ -272,12 +272,12 @@ class _ProfileDataTableState extends State<ProfileDataTable> {
             width: summaryWidth,
             padding: const EdgeInsets.symmetric(horizontal: 10),
             alignment: Alignment.centerLeft,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(right: BorderSide(color: AppTheme.border)),
             ),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     'EQUIPMENT / SUBNET NOTES',
                     style: TextStyle(
@@ -302,7 +302,7 @@ class _ProfileDataTableState extends State<ProfileDataTable> {
                         color: AppTheme.warning.withValues(alpha: 0.5),
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       'DRY-RUN TABLE BORDER',
                       style: TextStyle(
                         fontSize: 9.5,
@@ -320,7 +320,7 @@ class _ProfileDataTableState extends State<ProfileDataTable> {
             width: _actionsColWidth,
             padding: const EdgeInsets.symmetric(horizontal: 10),
             alignment: Alignment.center,
-            child: const Text(
+            child: Text(
               'QUICK ACTIONS',
               style: TextStyle(
                 fontSize: 10.5,
@@ -413,21 +413,25 @@ class _ProfileDataTableState extends State<ProfileDataTable> {
                 ? Icons.filter_alt_off_outlined
                 : Icons.lan_outlined,
             size: 54,
-            color: Colors.grey.withValues(alpha: 0.5),
+            color: AppTheme.textMuted.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
             hasActiveFilter
                 ? 'No presets match your active search filters'
                 : 'No IP Profile Presets Loaded',
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textPrimary,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             hasActiveFilter
                 ? 'Try clearing your search query or category filter chips'
                 : 'Create a custom preset above, snapshot your active network interface, or load the demo presets.',
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
+            style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
           ),
           const SizedBox(height: 20),
           if (hasActiveFilter)
@@ -564,7 +568,7 @@ class _ProfileRowWidgetState extends State<_ProfileRowWidget> {
                       Expanded(
                         child: Text(
                           p.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: AppTheme.textPrimary,
@@ -736,7 +740,7 @@ class _ProfileRowWidgetState extends State<_ProfileRowWidget> {
                       Expanded(
                         child: Text(
                           p.notes.isNotEmpty ? p.notes : '—',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11.5,
                             color: AppTheme.textSecondary,
                           ),
@@ -811,8 +815,8 @@ class _ProfileRowWidgetState extends State<_ProfileRowWidget> {
                           if (val == 'duplicate') widget.onDuplicate();
                           if (val == 'delete') widget.onDelete();
                         },
-                        itemBuilder: (_) => const [
-                          PopupMenuItem(
+                        itemBuilder: (_) => [
+                          const PopupMenuItem(
                             value: 'duplicate',
                             height: 32,
                             child: Row(
@@ -836,7 +840,7 @@ class _ProfileRowWidgetState extends State<_ProfileRowWidget> {
                                   size: 14,
                                   color: AppTheme.error,
                                 ),
-                                SizedBox(width: 8),
+                                const SizedBox(width: 8),
                                 Text(
                                   'Delete Preset',
                                   style: TextStyle(

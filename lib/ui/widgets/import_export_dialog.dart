@@ -76,13 +76,13 @@ class _ImportExportDialogState extends State<ImportExportDialog> {
             children: [
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.import_export,
                     size: 18,
                     color: AppTheme.secondaryCyan,
                   ),
                   const SizedBox(width: 8),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'Import / Export Presets (JSON)',
                       style: TextStyle(
@@ -108,7 +108,7 @@ class _ImportExportDialogState extends State<ImportExportDialog> {
                 ],
               ),
             const SizedBox(height: 10),
-            const Text(
+            Text(
               'Copy the JSON below to share presets across workstations, or paste a JSON bundle and click Import.',
               style: TextStyle(fontSize: 11.5, color: AppTheme.textSecondary),
             ),

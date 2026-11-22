@@ -412,4 +412,70 @@ Router: 192.168.10.1
     expect(find.text('Load Demo'), findsOneWidget);
     expect(find.text('Dry-Run Mode'), findsOneWidget);
   });
+
+  group('Synchronized Light & Dark Mode Tests', () {
+    tearDown(() {
+      AppTheme.isDark = true;
+    });
+
+    test('AppTheme dynamic getters switch palette and preserve isDark on build',
+        () {
+      AppTheme.isDark = true;
+      expect(AppTheme.scaffoldBg, const Color(0xFF141414));
+      expect(AppTheme.surface, const Color(0xFF1E1E1E));
+      expect(AppTheme.textPrimary, const Color(0xFFE0E0E0));
+
+      final lightData = AppTheme.lightTheme();
+      expect(lightData.brightness, Brightness.light);
+      expect(lightData.scaffoldBackgroundColor, const Color(0xFFF3F4F6));
+      expect(AppTheme.isDark, isTrue);
+
+      AppTheme.isDark = false;
+      expect(AppTheme.scaffoldBg, const Color(0xFFF3F4F6));
+      expect(AppTheme.surface, const Color(0xFFFFFFFF));
+      expect(AppTheme.surfaceHigh, const Color(0xFFF9FAFB));
+      expect(AppTheme.border, const Color(0xFFE5E7EB));
+      expect(AppTheme.textPrimary, const Color(0xFF111827));
+      expect(AppTheme.textSecondary, const Color(0xFF4B5563));
+      expect(AppTheme.textMuted, const Color(0xFF6B7280));
+
+      final darkData = AppTheme.darkTheme();
+      expect(darkData.brightness, Brightness.dark);
+      expect(darkData.scaffoldBackgroundColor, const Color(0xFF141414));
+      expect(AppTheme.isDark, isFalse);
+    });
+
+    testWidgets('Renders 5-Tier IP Profile Switcher cleanly in Light Mode', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1400, 820);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      AppTheme.isDark = false;
+      final vm = IpSetterViewModel(
+        profileRepository: ProfileRepository(DatabaseService()),
+        nicRepository: NicRepository(NicBackendService(), GatewayPingService()),
+      );
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<IpSetterViewModel>.value(
+          value: vm,
+          child: MaterialApp(
+            theme: AppTheme.lightTheme(),
+            darkTheme: AppTheme.darkTheme(),
+            themeMode: ThemeMode.light,
+            home: const MainScreen(),
+          ),
+        ),
+      );
+
+      expect(find.text('IP PROFILE SWITCHER'), findsOneWidget);
+      expect(find.text('New Preset'), findsOneWidget);
+      expect(find.text('Quick DHCP'), findsOneWidget);
+      expect(find.text('Load Demo'), findsOneWidget);
+      final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+      expect(scaffold.backgroundColor, const Color(0xFFF3F4F6));
+    });
+  });
 }

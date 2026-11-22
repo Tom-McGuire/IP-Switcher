@@ -209,7 +209,7 @@ class _ProfileEditorDialogState extends State<ProfileEditorDialog> {
                           widget.initialProfile == null
                               ? 'Create IP Profile Preset'
                               : 'Edit IP Profile Preset',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: AppTheme.textPrimary,
@@ -266,7 +266,7 @@ class _ProfileEditorDialogState extends State<ProfileEditorDialog> {
                           key: ValueKey(_category),
                           initialValue: _category,
                           dropdownColor: AppTheme.surfaceHigh,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             color: AppTheme.textPrimary,
                           ),
@@ -319,7 +319,7 @@ class _ProfileEditorDialogState extends State<ProfileEditorDialog> {
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(color: AppTheme.inputBorder),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.add,
                               size: 16,
                               color: AppTheme.secondaryCyan,
@@ -368,7 +368,7 @@ class _ProfileEditorDialogState extends State<ProfileEditorDialog> {
                   // Static vs DHCP Segmented Toggle
                   Row(
                     children: [
-                      const Text(
+                      Text(
                         'IPv4 Mode: ',
                         style: TextStyle(
                           fontSize: 13,
@@ -484,7 +484,7 @@ class _ProfileEditorDialogState extends State<ProfileEditorDialog> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.info_outline,
                             size: 14,
                             color: AppTheme.secondaryCyan,
@@ -493,7 +493,7 @@ class _ProfileEditorDialogState extends State<ProfileEditorDialog> {
                           Expanded(
                             child: Text(
                               subnetPreview,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
                                 color: AppTheme.secondaryCyan,
                                 fontWeight: FontWeight.w500,
@@ -581,7 +581,7 @@ class _ProfileEditorDialogState extends State<ProfileEditorDialog> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.autorenew,
                             size: 15,
                             color: AppTheme.secondaryCyan,
@@ -590,7 +590,7 @@ class _ProfileEditorDialogState extends State<ProfileEditorDialog> {
                           Expanded(
                             child: Text(
                               subnetPreview,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
                                 color: AppTheme.secondaryCyan,
                                 fontWeight: FontWeight.w500,
