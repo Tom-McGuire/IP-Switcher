@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../../data/repositories/nic_repository.dart';
 import '../../data/repositories/profile_repository.dart';
 import '../../data/services/gateway_ping_service.dart';
